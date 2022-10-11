@@ -8,6 +8,12 @@ import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+
+import static clientChat.ClientSocket.SERVER_IP;
 
 public class LoginFrame {
     String login;
@@ -97,9 +103,22 @@ public class LoginFrame {
     }
 
     private class LoginOkButtonActonListener implements ActionListener {
+        public static final String BIND_CHECK_LOGIN = "server.checkLogin";
+
         public void actionPerformed(ActionEvent actionEvent) {
-            login = loginTextField.getText();
-            //TODO add validation for duplicates
+            final Registry registry;
+
+            try {
+                login = loginTextField.getText();
+                registry = LocateRegistry.getRegistry(SERVER_IP, 4344);
+                //получаем объект (прокс-сервер)
+                serverLocalChat.CheckLogin service = (serverLocalChat.CheckLogin)registry.lookup("rmi://"+SERVER_IP+":4344/"+BIND_CHECK_LOGIN);
+                //Вызываем удаленный метод
+                boolean result = service.checkLogin(login);
+            }
+            catch (RemoteException | NotBoundException e) {
+                throw new RuntimeException(e);
+            }
             loginFrame.dispose();
             new ChatFrame(login);
             ClientSocket.sendMessage(login + " joined to chat");
